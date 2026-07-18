@@ -130,6 +130,7 @@ export function downloadVideo(
     const infoResult = await runYtDlp([
       '--dump-json',
       '--no-playlist',
+      '--extractor-args', '["generic:impersonate"]',
       url
     ])
 
@@ -169,6 +170,7 @@ export function downloadVideo(
       '-o', outputTemplate,
       '--newline',
       '--no-playlist',
+      '--extractor-args', '["generic:impersonate"]',
       url
     ]
 
@@ -248,9 +250,8 @@ export function downloadVideo(
             })
           } else {
             resolve({
-              success: true,
-              filePath,
-              title: videoTitle
+              success: false,
+              error: 'El video se descargó pero no se encontró el archivo en disco'
             })
           }
         }
