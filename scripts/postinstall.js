@@ -1,7 +1,9 @@
-const { execSync } = require('child_process')
 const fs = require('fs')
 const path = require('path')
 const https = require('https')
+const { execSync } = require('child_process')
+const { createReadStream } = require('fs')
+const zlib = require('zlib')
 
 const BIN_DIR = path.join(__dirname, '..', 'bin')
 
@@ -9,11 +11,15 @@ async function download(url, dest) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest)
     https.get(url, (response) => {
-      // Follow redirects
       if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
         file.close()
-        fs.unlinkSync(dest)
+        if (fs.existsSync(dest)) fs.unlinkSync(dest)
         return download(response.headers.location, dest).then(resolve).catch(reject)
+      }
+      if (response.statusCode !== 200) {
+        file.close()
+        if (fs.existsSync(dest)) fs.unlinkSync(dest)
+        return reject(new Error(`HTTP ${response.statusCode} for ${url}`))
       }
       response.pipe(file)
       file.on('finish', () => {
@@ -21,42 +27,102 @@ async function download(url, dest) {
         resolve()
       })
     }).on('error', (err) => {
-      fs.unlink(dest, () => {})
+      if (fs.existsSync(dest)) fs.unlinkSync(dest)
       reject(err)
     })
   })
 }
 
-async function main() {
-  // Only download on Windows
-  if (process.platform !== 'win32') {
-    console.log('[postinstall] Skipping yt-dlp download — not Windows')
-    return
-  }
-
-  // Ensure bin directory exists
-  if (!fs.existsSync(BIN_DIR)) {
-    fs.mkdirSync(BIN_DIR, { recursive: true })
-  }
-
+async function downloadYtDlp() {
   const ytdlpPath = path.join(BIN_DIR, 'yt-dlp.exe')
-
-  // Skip if already exists
   if (fs.existsSync(ytdlpPath)) {
-    console.log('[postinstall] yt-dlp.exe already exists, skipping download')
+    console.log('[postinstall] yt-dlp.exe already exists, skipping')
     return
   }
 
   console.log('[postinstall] Downloading yt-dlp.exe...')
-
   const url = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe'
+  await download(url, ytdlpPath)
+  console.log('[postinstall] yt-dlp.exe downloaded successfully')
+}
+
+async function downloadFfmpeg() {
+  const ffmpegPath = path.join(BIN_DIR, 'ffmpeg.exe')
+  if (fs.existsSync(ffmpegPath)) {
+    console.log('[postinstall] ffmpeg.exe already exists, skipping')
+    return
+  }
+
+  console.log('[postinstall] Downloading ffmpeg...')
+  const zipPath = path.join(BIN_DIR, 'ffmpeg.zip')
+  const url = 'https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip'
 
   try {
-    await download(url, ytdlpPath)
-    console.log('[postinstall] yt-dlp.exe downloaded successfully')
+    await download(url, zipPath)
+    console.log('[postinstall] Extracting ffmpeg.exe from zip...')
+
+    // Use tar to extract (available on Windows 10+)
+    try {
+      execSync(`tar -xf "${zipPath}" -C "${BIN_DIR}" --strip-components=2 --include="*/bin/ffmpeg.exe"`, {
+        stdio: 'pipe'
+      })
+    } catch {
+      // Fallback: use PowerShell with a script file
+      const psScript = path.join(BIN_DIR, '_extract.ps1')
+      const scriptContent = `
+Add-Type -Assembly "System.IO.Compression.FileSystem"
+$zip = [System.IO.Compression.ZipFile]::OpenRead('${zipPath}')
+$entry = $zip.Entries | Where-Object { $_.FullName -like '*/bin/ffmpeg.exe' }
+if ($entry) {
+  $stream = $entry.Open()
+  $dest = [System.IO.File]::Create('${ffmpegPath}')
+  $stream.CopyTo($dest)
+  $dest.Close()
+  $stream.Close()
+}
+$zip.Dispose()
+Remove-Item '${psScript}' -ErrorAction SilentlyContinue
+`
+      fs.writeFileSync(psScript, scriptContent, 'utf-8')
+      execSync(`powershell -ExecutionPolicy Bypass -File "${psScript}"`, { stdio: 'pipe' })
+    }
+
+    // Clean up zip
+    if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath)
+
+    if (fs.existsSync(ffmpegPath)) {
+      console.log('[postinstall] ffmpeg.exe extracted successfully')
+    } else {
+      console.log('[postinstall] WARNING: Could not extract ffmpeg.exe')
+      console.log('[postinstall] Download manually from: https://github.com/yt-dlp/FFmpeg-Builds/releases')
+      console.log('[postinstall] Place ffmpeg.exe in the bin/ directory')
+    }
+  } catch (err) {
+    console.error('[postinstall] Failed to download ffmpeg:', err.message)
+    if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath)
+  }
+}
+
+async function main() {
+  if (process.platform !== 'win32') {
+    console.log('[postinstall] Skipping binary downloads — not Windows')
+    return
+  }
+
+  if (!fs.existsSync(BIN_DIR)) {
+    fs.mkdirSync(BIN_DIR, { recursive: true })
+  }
+
+  try {
+    await downloadYtDlp()
   } catch (err) {
     console.error('[postinstall] Failed to download yt-dlp.exe:', err.message)
-    console.log('[postinstall] You can manually place yt-dlp.exe in the bin/ directory')
+  }
+
+  try {
+    await downloadFfmpeg()
+  } catch (err) {
+    console.error('[postinstall] Failed to download ffmpeg:', err.message)
   }
 }
 
