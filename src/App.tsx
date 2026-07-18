@@ -3,26 +3,19 @@ import Layout from './components/Layout'
 import URLInput from './components/URLInput'
 import HistoryList from './components/HistoryList'
 import VideoPlayer from './components/VideoPlayer'
+import ProgressBar from './components/ProgressBar'
+import { useDownload } from './hooks/useDownload'
 import type { HistoryItem } from './types'
-
-// Mock data for UI preview
-const MOCK_HISTORY: HistoryItem[] = [
-  { id: '1', url: 'https://anthropic.com', domain: 'anthropic.com', title: 'Anthropic', filePath: '', date: 'Hoy, 10:24' },
-  { id: '2', url: 'https://github.com/explore', domain: 'github.com/explore', title: 'GitHub Explore', filePath: '', date: 'Ayer, 18:02' },
-  { id: '3', url: 'https://wikipedia.org', domain: 'wikipedia.org', title: 'Wikipedia', filePath: '', date: 'Lun, 09:15' },
-]
 
 export default function App(): JSX.Element {
   const [url, setUrl] = useState('')
   const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null)
+  const { downloadState, history, startDownload, openFolder, openFile } = useDownload()
 
-  const handleGenerate = (): void => {
+  const handleGenerate = async (): Promise<void> => {
     if (!url.trim()) return
-    console.log('Generate:', url)
-  }
-
-  const handleOpenFolder = (filePath: string): void => {
-    console.log('Open folder:', filePath)
+    await startDownload(url)
+    setUrl('')
   }
 
   return (
@@ -37,17 +30,43 @@ export default function App(): JSX.Element {
         value={url}
         onChange={setUrl}
         onSubmit={handleGenerate}
+        disabled={downloadState.status === 'downloading'}
       />
+
+      {/* Progress bar */}
+      {downloadState.status === 'downloading' && (
+        <div className="mt-4">
+          <ProgressBar
+            percent={downloadState.progress.percent}
+            speed={downloadState.progress.speed}
+            eta={downloadState.progress.eta}
+          />
+        </div>
+      )}
+
+      {/* Error message */}
+      {downloadState.status === 'error' && downloadState.error && (
+        <div className="mt-4 px-4 py-3 bg-error/10 border border-error/30 rounded-xl text-error text-sm">
+          {downloadState.error}
+        </div>
+      )}
+
+      {/* Success message */}
+      {downloadState.status === 'done' && (
+        <div className="mt-4 px-4 py-3 bg-success/10 border border-success/30 rounded-xl text-success text-sm">
+          Video descargado correctamente
+        </div>
+      )}
 
       {/* Main content: History + Preview */}
       <div className="flex-1 flex gap-6 mt-6 overflow-hidden">
         {/* History list */}
         <div className="flex-1 overflow-hidden">
           <HistoryList
-            items={MOCK_HISTORY}
+            items={history}
             selectedId={selectedItem?.id ?? null}
             onSelect={setSelectedItem}
-            onOpenFolder={handleOpenFolder}
+            onOpenFolder={(filePath) => openFile(filePath)}
           />
         </div>
 
