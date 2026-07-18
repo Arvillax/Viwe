@@ -1,0 +1,20 @@
+node_modules/
+out/
+dist/
+bin/*.exe
+bin/*.exe.*
+build/icons/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
