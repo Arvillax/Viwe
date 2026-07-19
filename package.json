@@ -1,7 +1,7 @@
 {
   "name": "viwe",
   "version": "1.0.0",
-  "description": "Download videos from any URL as MP4",
+  "description": "Generate MP4 videos from any webpage URL",
   "main": "./out/main/index.js",
   "author": "Viwe",
   "license": "MIT",
@@ -14,7 +14,7 @@
     "build:unpack": "electron-vite build && electron-builder --win --dir"
   },
   "dependencies": {
-    "playwright": "^1.61.1"
+    "patchright": "^1.61.1"
   },
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.0",

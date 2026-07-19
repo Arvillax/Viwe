@@ -1,12 +1,28 @@
-import { chromium, type Browser, type BrowserContext, type Page } from 'playwright'
+/**
+ * recorder.ts — Motor de grabación de páginas web
+ *
+ * Utiliza Patchright (fork anti-detección de Playwright) para abrir una URL
+ * en Chromium, grabar el viewport del navegador y exportar como MP4.
+ *
+ * Flujo:
+ * 1. Lanza Chromium headless con Patchright (pasa verificaciones Cloudflare)
+ * 2. Navega a la URL y espera que cargue
+ * 3. Graba el viewport por la duración especificada (modo estático o scroll)
+ * 4. Convierte el .webm resultante a .mp4 usando ffmpeg
+ * 5. Guarda el archivo en ~/Videos/Viwe/
+ */
+
+import { chromium, type Browser, type BrowserContext, type Page } from 'patchright'
 import { app, BrowserWindow } from 'electron'
 import { execSync } from 'child_process'
 import path from 'path'
 import fs from 'fs'
 import os from 'os'
 
+/** Modo de grabación: estático (viewport fijo) o scroll (auto-scroll suave) */
 export type RecordMode = 'static' | 'scroll'
 
+/** Resultado de una operación de grabación */
 export interface RecordResult {
   success: boolean
   filePath?: string
@@ -14,6 +30,11 @@ export interface RecordResult {
   error?: string
 }
 
+/**
+ * Obtiene la ruta del directorio de descargas de Viwe.
+ * Crea el directorio si no existe.
+ * Ruta: ~/Videos/Viwe/
+ */
 function getDownloadsDir(): string {
   const dir = path.join(os.homedir(), 'Videos', 'Viwe')
   if (!fs.existsSync(dir)) {
@@ -22,6 +43,11 @@ function getDownloadsDir(): string {
   return dir
 }
 
+/**
+ * Obtiene la ruta del directorio temporal para grabaciones.
+ * Los archivos .webm se guardan aquí temporalmente antes de convertir a MP4.
+ * Ruta: %TEMP%/viwe-recordings/
+ */
 function getTempDir(): string {
   const dir = path.join(os.tmpdir(), 'viwe-recordings')
   if (!fs.existsSync(dir)) {
@@ -30,8 +56,12 @@ function getTempDir(): string {
   return dir
 }
 
+/**
+ * Obtiene la ruta completa de ffmpeg.exe.
+ * En desarrollo: bin/ffmpeg.exe
+ * En producción: resources/bin/ffmpeg.exe (bundled via extraResources)
+ */
 function getFfmpegPath(): string {
-  // In dev, use bin/ffmpeg.exe. In production, use extraResources
   const isDev = !app.isPackaged
   if (isDev) {
     return path.join(process.cwd(), 'bin', 'ffmpeg.exe')
@@ -39,6 +69,13 @@ function getFfmpegPath(): string {
   return path.join(process.resourcesPath, 'bin', 'ffmpeg.exe')
 }
 
+/**
+ * Envía actualizaciones de progreso al renderer process.
+ * El frontend escucha estos eventos para mostrar la barra de progreso.
+ *
+ * @param mainWindow - Ventana principal de Electron
+ * @param data - Datos de progreso: porcentaje, velocidad y ETA
+ */
 function emitProgress(
   mainWindow: BrowserWindow,
   data: { percent: number; speed: string; eta: string }
@@ -48,6 +85,12 @@ function emitProgress(
   }
 }
 
+/**
+ * Formatea milisegundos a formato MM:SS para mostrar ETA.
+ *
+ * @param ms - Milisegundos restantes
+ * @returns String en formato "MM:SS"
+ */
 function formatEta(ms: number): string {
   const totalSec = Math.ceil(ms / 1000)
   const min = Math.floor(totalSec / 60)
@@ -55,6 +98,13 @@ function formatEta(ms: number): string {
   return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`
 }
 
+/**
+ * Limpia un nombre de archivo de caracteres inválidos en Windows.
+ * Remueve: < > : " / \ | ? * y reemplaza múltiples espacios por uno solo.
+ *
+ * @param name - Nombre original (normalmente el título de la página)
+ * @returns Nombre seguro para usar como archivo, máximo 200 caracteres
+ */
 function sanitizeFilename(name: string): string {
   return name
     .replace(/[<>:"/\\|?*]/g, '')
@@ -63,6 +113,20 @@ function sanitizeFilename(name: string): string {
     .substring(0, 200)
 }
 
+/**
+ * Función principal de grabación.
+ *
+ * Abre una URL en Chromium (headless), graba el viewport por la duración
+ * especificada, y exporta como MP4. Soporta dos modos:
+ * - 'static': El viewport queda fijo, graba lo que se ve en pantalla
+ * - 'scroll': Hace auto-scroll suave (30px cada 100ms con behavior: smooth)
+ *
+ * @param url - URL de la página a grabar
+ * @param duration - Duración de la grabación en segundos (5-300)
+ * @param mode - Modo de grabación: 'static' o 'scroll'
+ * @param mainWindow - Ventana principal de Electron (para emitir progreso)
+ * @returns Resultado con éxito/error y ruta del archivo generado
+ */
 export async function recordVideo(
   url: string,
   duration: number,
@@ -73,7 +137,7 @@ export async function recordVideo(
   const downloadsDir = getDownloadsDir()
   const ffmpegPath = getFfmpegPath()
 
-  // Verify ffmpeg exists
+  // Verificar que ffmpeg existe (necesario para convertir WebM → MP4)
   if (!fs.existsSync(ffmpegPath)) {
     return { success: false, error: 'ffmpeg.exe no encontrado en bin/' }
   }
@@ -81,7 +145,10 @@ export async function recordVideo(
   let browser: Browser | null = null
 
   try {
-    // Step 1: Launch Chromium
+    // ─── PASO 1: Lanzar Chromium con Patchright ───
+    // Patchright parchea TLS fingerprint, navigator.webdriver, y trazas CDP
+    // para pasar verificaciones de Cloudflare y otros anti-bots.
+    // Se usa channel: 'chrome' para usar Chrome real del usuario si está instalado.
     emitProgress(mainWindow, {
       percent: 0,
       speed: 'Iniciando navegador...',
@@ -92,6 +159,8 @@ export async function recordVideo(
       headless: true
     })
 
+    // Crear contexto con grabación de video habilitada
+    // El video se graba como WebM (VP8) en el directorio temporal
     const context = await browser.newContext({
       recordVideo: {
         dir: tempDir,
@@ -102,7 +171,10 @@ export async function recordVideo(
 
     const page = await context.newPage()
 
-    // Step 2: Navigate to URL
+    // ─── PASO 2: Navegar a la URL ───
+    // Se usa waitUntil: 'load' en vez de 'networkidle' para compatibilidad
+    // con sitios que tienen trackers/analytics que nunca dejan de hacer requests.
+    // Timeout: 60 segundos para sitios lentos.
     emitProgress(mainWindow, {
       percent: 5,
       speed: 'Cargando página...',
@@ -121,7 +193,7 @@ export async function recordVideo(
       eta: formatEta(duration * 1000)
     })
 
-    // Step 3: Record for duration
+    // ─── PASO 3: Grabar por la duración especificada ───
     const durationMs = duration * 1000
     const startTime = Date.now()
     const progressStart = 10
@@ -129,7 +201,9 @@ export async function recordVideo(
     const progressRange = progressEnd - progressStart
 
     if (mode === 'scroll') {
-      // Smooth constant scroll while recording
+      // Modo SCROLL: Auto-scroll suave mientras graba
+      // Scroll constante de 30px cada 100ms con CSS behavior: 'smooth'
+      // Esto crea un efecto de scroll tenue y natural (~300px/s)
       const scrollInterval = setInterval(() => {
         page.evaluate(() => window.scrollBy({ top: 30, behavior: 'smooth' })).catch(() => {})
       }, 100)
@@ -146,7 +220,7 @@ export async function recordVideo(
       }
       clearInterval(scrollInterval)
     } else {
-      // Static — just wait
+      // Modo ESTÁTICO: El viewport queda fijo, solo graba lo que se ve
       while (Date.now() - startTime < durationMs) {
         const elapsed = Date.now() - startTime
         const percent = progressStart + Math.round((elapsed / durationMs) * progressRange)
@@ -159,7 +233,9 @@ export async function recordVideo(
       }
     }
 
-    // Step 4: Close context to flush video
+    // ─── PASO 4: Cerrar contexto para flush del video ───
+    // IMPORTANTE: El video solo se escribe a disco cuando se cierra el contexto.
+    // No se puede acceder al path del video antes de cerrar.
     emitProgress(mainWindow, {
       percent: 90,
       speed: 'Guardando grabación...',
@@ -169,13 +245,13 @@ export async function recordVideo(
     const video = page.video()
     await context.close()
 
-    // Step 5: Get .webm path
+    // ─── PASO 5: Obtener la ruta del .webm grabado ───
     let webmPath = ''
     if (video) {
       webmPath = await video.path()
     }
 
-    // Fallback: find the newest .webm in temp dir
+    // Fallback: si no se pudo obtener el path, buscar el .webm más reciente
     if (!webmPath || !fs.existsSync(webmPath)) {
       const files = fs.readdirSync(tempDir)
         .filter(f => f.endsWith('.webm'))
@@ -192,7 +268,9 @@ export async function recordVideo(
       }
     }
 
-    // Step 6: Convert to MP4
+    // ─── PASO 6: Convertir WebM a MP4 con ffmpeg ───
+    // WebM (VP8) → MP4 (H.264) para compatibilidad con todos los reproductores
+    // Flags: -c:v libx264 (codec H.264), -crf 23 (calidad buena), -pix_fmt yuv420p (compatibilidad)
     emitProgress(mainWindow, {
       percent: 92,
       speed: 'Convirtiendo a MP4...',
@@ -209,22 +287,23 @@ export async function recordVideo(
       { stdio: 'pipe', timeout: 120000 }
     )
 
-    // Step 7: Move to downloads
+    // ─── PASO 7: Mover MP4 al directorio de descargas ───
     emitProgress(mainWindow, {
       percent: 98,
       speed: 'Finalizando...',
       eta: '00:00'
     })
 
+    // Si ya existe un archivo con el mismo nombre, eliminarlo primero
     if (fs.existsSync(finalPath)) {
       fs.unlinkSync(finalPath)
     }
     fs.renameSync(mp4TempPath, finalPath)
 
-    // Step 8: Cleanup temp files
+    // ─── PASO 8: Limpiar archivos temporales ───
     try {
       if (fs.existsSync(webmPath)) fs.unlinkSync(webmPath)
-      // Clean other temp files
+      // Limpiar todos los archivos temporales de esta grabación
       const tempFiles = fs.readdirSync(tempDir)
       for (const f of tempFiles) {
         const fPath = path.join(tempDir, f)
@@ -232,6 +311,7 @@ export async function recordVideo(
       }
     } catch {}
 
+    // Cerrar navegador
     await browser.close()
     browser = null
 
@@ -250,10 +330,11 @@ export async function recordVideo(
     const errorMsg = err instanceof Error ? err.message : 'Error desconocido'
     return { success: false, error: errorMsg }
   } finally {
+    // Asegurar que el navegador se cierre siempre, incluso si hay error
     if (browser) {
       try { await browser.close() } catch {}
     }
-    // Cleanup temp dir
+    // Limpiar directorio temporal
     try {
       if (fs.existsSync(tempDir)) {
         const files = fs.readdirSync(tempDir)
