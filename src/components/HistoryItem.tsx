@@ -1,3 +1,16 @@
+/**
+ * HistoryItem.tsx — Item individual del historial de grabaciones
+ *
+ * Muestra un video grabado con:
+ * - Botón de play (abre el reproductor del sistema)
+ * - Dominio del sitio grabado + fecha
+ * - Botón de carpeta (abre Explorer en la ubicación del archivo)
+ *
+ * El item se resalta cuando está seleccionado (borde accent + fondo sutil).
+ * Los botones de play y carpeta usan `stopPropagation` para no activar
+ * la selección del item al hacer click en ellos.
+ */
+
 import { Play, FolderOpen } from 'lucide-react'
 import type { HistoryItem as HistoryItemType } from '../types'
 
@@ -21,7 +34,7 @@ export default function HistoryItem({ item, isSelected, onSelect, onPlay, onOpen
         }
       `}
     >
-      {/* Play icon */}
+      {/* ===== Botón de play — abre el .mp4 con el reproductor del sistema ===== */}
       <button
         onClick={(e) => { e.stopPropagation(); onPlay() }}
         className={`
@@ -32,13 +45,13 @@ export default function HistoryItem({ item, isSelected, onSelect, onPlay, onOpen
         <Play className={`w-4 h-4 ${isSelected ? 'text-accent' : 'text-accent-deep'}`} />
       </button>
 
-      {/* Domain + date */}
+      {/* ===== Info del video: dominio + fecha de grabación ===== */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-text-primary truncate">{item.domain}</p>
         <p className="text-xs text-text-secondary">{item.date}</p>
       </div>
 
-      {/* Folder button */}
+      {/* ===== Botón de carpeta — abre Explorer en la ubicación del archivo ===== */}
       <button
         onClick={(e) => { e.stopPropagation(); onOpenFolder() }}
         className="p-1.5 rounded-lg hover:bg-accent-deep/20 transition-colors cursor-pointer"

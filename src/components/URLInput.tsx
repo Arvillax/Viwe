@@ -1,3 +1,14 @@
+/**
+ * URLInput.tsx — Input de URL con opciones de grabación
+ *
+ * Componente compuesto que incluye:
+ * - Barra de URL con botón "Generar" (submit con Enter o click)
+ * - Fila de opciones: duración (5-300 segundos) y modo (estático/scroll)
+ *
+ * Se deshabilita automáticamente durante una grabación en curso para
+ * evitar grabs múltiples.
+ */
+
 import { Link } from 'lucide-react'
 import type { RecordMode } from '../types'
 
@@ -22,6 +33,7 @@ export default function URLInput({
   onModeChange,
   disabled
 }: URLInputProps): JSX.Element {
+  /** Permite enviar con Enter (además del botón) */
   const handleKeyDown = (e: React.KeyboardEvent): void => {
     if (e.key === 'Enter' && value.trim()) {
       onSubmit()
@@ -30,7 +42,7 @@ export default function URLInput({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* URL bar */}
+      {/* ===== Barra de URL ===== */}
       <div className="flex items-center gap-3 bg-bg-card rounded-xl px-4 py-3 border border-border/30 focus-within:border-accent/50 transition-colors">
         <Link className="w-5 h-5 text-text-secondary flex-shrink-0" />
         <input
@@ -51,9 +63,9 @@ export default function URLInput({
         </button>
       </div>
 
-      {/* Options row */}
+      {/* ===== Fila de opciones: duración + modo ===== */}
       <div className="flex items-center gap-4 px-1">
-        {/* Duration */}
+        {/* Selector de duración (5-300 segundos) */}
         <div className="flex items-center gap-2">
           <label className="text-xs text-text-secondary">Duración:</label>
           <input
@@ -68,7 +80,7 @@ export default function URLInput({
           <span className="text-xs text-text-secondary">seg</span>
         </div>
 
-        {/* Mode */}
+        {/* Selector de modo de grabación */}
         <div className="flex items-center gap-2">
           <label className="text-xs text-text-secondary">Modo:</label>
           <select
