@@ -110,8 +110,8 @@ export async function recordVideo(
     })
 
     await page.goto(url, {
-      waitUntil: 'networkidle',
-      timeout: 30000
+      waitUntil: 'load',
+      timeout: 60000
     })
 
     const pageTitle = await page.title()
