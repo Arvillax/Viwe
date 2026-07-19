@@ -20,6 +20,10 @@ export default function App(): JSX.Element {
     setUrl('')
   }
 
+  const handlePlay = (filePath: string): void => {
+    openFile(filePath)
+  }
+
   return (
     <Layout>
       {/* Header */}
@@ -72,6 +76,7 @@ export default function App(): JSX.Element {
             items={history}
             selectedId={selectedItem?.id ?? null}
             onSelect={setSelectedItem}
+            onPlay={handlePlay}
             onOpenFolder={(filePath) => openFile(filePath)}
           />
         </div>

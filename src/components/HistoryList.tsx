@@ -7,10 +7,11 @@ interface HistoryListProps {
   items: HistoryItemType[]
   selectedId: string | null
   onSelect: (item: HistoryItemType) => void
+  onPlay: (filePath: string) => void
   onOpenFolder: (filePath: string) => void
 }
 
-export default function HistoryList({ items, selectedId, onSelect, onOpenFolder }: HistoryListProps): JSX.Element {
+export default function HistoryList({ items, selectedId, onSelect, onPlay, onOpenFolder }: HistoryListProps): JSX.Element {
   const [isExpanded, setIsExpanded] = useState(true)
 
   return (
@@ -38,6 +39,7 @@ export default function HistoryList({ items, selectedId, onSelect, onOpenFolder 
                 item={item}
                 isSelected={item.id === selectedId}
                 onSelect={() => onSelect(item)}
+                onPlay={() => onPlay(item.filePath)}
                 onOpenFolder={() => onOpenFolder(item.filePath)}
               />
             ))

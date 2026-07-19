@@ -1,14 +1,15 @@
-import { Play, FolderOpen, MoreVertical } from 'lucide-react'
+import { Play, FolderOpen } from 'lucide-react'
 import type { HistoryItem as HistoryItemType } from '../types'
 
 interface HistoryItemProps {
   item: HistoryItemType
   isSelected: boolean
   onSelect: () => void
+  onPlay: () => void
   onOpenFolder: () => void
 }
 
-export default function HistoryItem({ item, isSelected, onSelect, onOpenFolder }: HistoryItemProps): JSX.Element {
+export default function HistoryItem({ item, isSelected, onSelect, onPlay, onOpenFolder }: HistoryItemProps): JSX.Element {
   return (
     <div
       onClick={onSelect}
@@ -21,12 +22,15 @@ export default function HistoryItem({ item, isSelected, onSelect, onOpenFolder }
       `}
     >
       {/* Play icon */}
-      <div className={`
-        w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
-        ${isSelected ? 'bg-accent/20' : 'bg-accent-deep/30'}
-      `}>
+      <button
+        onClick={(e) => { e.stopPropagation(); onPlay() }}
+        className={`
+          w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors cursor-pointer
+          ${isSelected ? 'bg-accent/20 hover:bg-accent/30' : 'bg-accent-deep/30 hover:bg-accent-deep/50'}
+        `}
+      >
         <Play className={`w-4 h-4 ${isSelected ? 'text-accent' : 'text-accent-deep'}`} />
-      </div>
+      </button>
 
       {/* Domain + date */}
       <div className="flex-1 min-w-0">
@@ -34,18 +38,13 @@ export default function HistoryItem({ item, isSelected, onSelect, onOpenFolder }
         <p className="text-xs text-text-secondary">{item.date}</p>
       </div>
 
-      {/* Actions */}
+      {/* Folder button */}
       <button
         onClick={(e) => { e.stopPropagation(); onOpenFolder() }}
         className="p-1.5 rounded-lg hover:bg-accent-deep/20 transition-colors cursor-pointer"
+        title="Abrir carpeta"
       >
         <FolderOpen className="w-4 h-4 text-text-secondary" />
-      </button>
-      <button
-        onClick={(e) => e.stopPropagation()}
-        className="p-1.5 rounded-lg hover:bg-accent-deep/20 transition-colors cursor-pointer"
-      >
-        <MoreVertical className="w-4 h-4 text-text-secondary" />
       </button>
     </div>
   )
