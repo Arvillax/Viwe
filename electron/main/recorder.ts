@@ -129,10 +129,10 @@ export async function recordVideo(
     const progressRange = progressEnd - progressStart
 
     if (mode === 'scroll') {
-      // Auto-scroll while recording
+      // Smooth constant scroll while recording
       const scrollInterval = setInterval(() => {
-        page.evaluate(() => window.scrollBy(0, 200)).catch(() => {})
-      }, 600)
+        page.evaluate(() => window.scrollBy({ top: 30, behavior: 'smooth' })).catch(() => {})
+      }, 100)
 
       while (Date.now() - startTime < durationMs) {
         const elapsed = Date.now() - startTime
