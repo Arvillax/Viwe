@@ -1,11 +1,11 @@
 import { ipcMain, shell, BrowserWindow } from 'electron'
-import { downloadVideo } from './ytdlp'
+import { recordVideo, type RecordMode } from './recorder'
 import { getHistory, addToHistory, deleteFromHistory } from './store'
 
 export function registerIpcHandlers(mainWindow: BrowserWindow): void {
-  // Download video
-  ipcMain.handle('ytdlp:download', async (_event, url: string) => {
-    const result = await downloadVideo(url, mainWindow)
+  // Record video from URL
+  ipcMain.handle('recorder:record', async (_event, url: string, duration: number, mode: RecordMode) => {
+    const result = await recordVideo(url, duration, mode, mainWindow)
 
     if (result.success && result.filePath && result.title) {
       const domain = new URL(url).hostname
@@ -35,9 +35,7 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
 
   // Shell
   ipcMain.handle('shell:openDownloads', () => {
-    const path = require('path')
-    const os = require('os')
-    const downloadsDir = path.join(os.homedir(), 'Videos', 'Viwe')
+    const downloadsDir = require('path').join(require('os').homedir(), 'Videos', 'Viwe')
     shell.openPath(downloadsDir)
   })
 

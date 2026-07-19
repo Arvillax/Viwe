@@ -2,9 +2,9 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 const api = {
-  // Download
-  downloadVideo: (url: string): Promise<{ success: boolean; filePath?: string; error?: string }> =>
-    ipcRenderer.invoke('ytdlp:download', url),
+  // Record video
+  recordVideo: (url: string, duration: number, mode: 'static' | 'scroll'): Promise<{ success: boolean; filePath?: string; title?: string; error?: string }> =>
+    ipcRenderer.invoke('recorder:record', url, duration, mode),
 
   // Progress listener
   onProgress: (callback: (data: { percent: number; speed: string; eta: string }) => void): (() => void) => {

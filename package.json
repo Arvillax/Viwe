@@ -13,7 +13,9 @@
     "build:win": "electron-vite build && electron-builder --win",
     "build:unpack": "electron-vite build && electron-builder --win --dir"
   },
-  "dependencies": {},
+  "dependencies": {
+    "playwright": "^1.61.1"
+  },
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.0",
     "@electron-toolkit/utils": "^3.0.0",

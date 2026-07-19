@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { DownloadState, HistoryItem } from '../types'
+import type { DownloadState, HistoryItem, RecordMode } from '../types'
 
 const initialDownloadState: DownloadState = {
   status: 'idle',
@@ -11,7 +11,7 @@ const initialDownloadState: DownloadState = {
 export function useDownload(): {
   downloadState: DownloadState
   history: HistoryItem[]
-  startDownload: (url: string) => Promise<void>
+  startRecording: (url: string, duration: number, mode: RecordMode) => Promise<void>
   loadHistory: () => Promise<void>
   deleteHistoryItem: (id: string) => Promise<void>
   openFolder: () => Promise<void>
@@ -47,7 +47,7 @@ export function useDownload(): {
     loadHistory()
   }, [loadHistory])
 
-  const startDownload = useCallback(async (url: string) => {
+  const startRecording = useCallback(async (url: string, duration: number, mode: RecordMode) => {
     if (!window.electronAPI) {
       setDownloadState((prev) => ({
         ...prev,
@@ -65,7 +65,7 @@ export function useDownload(): {
     })
 
     try {
-      const result = await window.electronAPI.downloadVideo(url)
+      const result = await window.electronAPI.recordVideo(url, duration, mode)
 
       if (result.success) {
         setDownloadState((prev) => ({
@@ -79,7 +79,7 @@ export function useDownload(): {
         setDownloadState((prev) => ({
           ...prev,
           status: 'error',
-          error: result.error || 'Download failed'
+          error: result.error || 'Recording failed'
         }))
       }
     } catch (err) {
@@ -110,7 +110,7 @@ export function useDownload(): {
   return {
     downloadState,
     history,
-    startDownload,
+    startRecording,
     loadHistory,
     deleteHistoryItem,
     openFolder,

@@ -1,3 +1,5 @@
+export type RecordMode = 'static' | 'scroll'
+
 export interface HistoryItem {
   id: string
   url: string
@@ -23,7 +25,7 @@ export interface DownloadState {
 }
 
 export interface ElectronAPI {
-  downloadVideo: (url: string) => Promise<{ success: boolean; filePath?: string; error?: string }>
+  recordVideo: (url: string, duration: number, mode: RecordMode) => Promise<{ success: boolean; filePath?: string; title?: string; error?: string }>
   onProgress: (callback: (data: DownloadProgress) => void) => () => void
   getHistory: () => Promise<HistoryItem[]>
   addToHistory: (item: { url: string; domain: string; title: string; filePath: string }) => Promise<void>

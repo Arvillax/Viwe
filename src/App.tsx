@@ -5,16 +5,18 @@ import HistoryList from './components/HistoryList'
 import VideoPlayer from './components/VideoPlayer'
 import ProgressBar from './components/ProgressBar'
 import { useDownload } from './hooks/useDownload'
-import type { HistoryItem } from './types'
+import type { HistoryItem, RecordMode } from './types'
 
 export default function App(): JSX.Element {
   const [url, setUrl] = useState('')
+  const [duration, setDuration] = useState(30)
+  const [mode, setMode] = useState<RecordMode>('static')
   const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null)
-  const { downloadState, history, startDownload, openFolder, openFile } = useDownload()
+  const { downloadState, history, startRecording, openFolder, openFile } = useDownload()
 
   const handleGenerate = async (): Promise<void> => {
     if (!url.trim()) return
-    await startDownload(url)
+    await startRecording(url, duration, mode)
     setUrl('')
   }
 
@@ -30,6 +32,10 @@ export default function App(): JSX.Element {
         value={url}
         onChange={setUrl}
         onSubmit={handleGenerate}
+        duration={duration}
+        onDurationChange={setDuration}
+        mode={mode}
+        onModeChange={setMode}
         disabled={downloadState.status === 'downloading'}
       />
 
@@ -54,7 +60,7 @@ export default function App(): JSX.Element {
       {/* Success message */}
       {downloadState.status === 'done' && (
         <div className="mt-4 px-4 py-3 bg-success/10 border border-success/30 rounded-xl text-success text-sm">
-          Video descargado correctamente
+          Video generado correctamente
         </div>
       )}
 

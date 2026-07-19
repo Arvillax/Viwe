@@ -2,8 +2,6 @@ const fs = require('fs')
 const path = require('path')
 const https = require('https')
 const { execSync } = require('child_process')
-const { createReadStream } = require('fs')
-const zlib = require('zlib')
 
 const BIN_DIR = path.join(__dirname, '..', 'bin')
 
@@ -33,19 +31,6 @@ async function download(url, dest) {
   })
 }
 
-async function downloadYtDlp() {
-  const ytdlpPath = path.join(BIN_DIR, 'yt-dlp.exe')
-  if (fs.existsSync(ytdlpPath)) {
-    console.log('[postinstall] yt-dlp.exe already exists, skipping')
-    return
-  }
-
-  console.log('[postinstall] Downloading yt-dlp.exe...')
-  const url = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe'
-  await download(url, ytdlpPath)
-  console.log('[postinstall] yt-dlp.exe downloaded successfully')
-}
-
 async function downloadFfmpeg() {
   const ffmpegPath = path.join(BIN_DIR, 'ffmpeg.exe')
   if (fs.existsSync(ffmpegPath)) {
@@ -61,13 +46,11 @@ async function downloadFfmpeg() {
     await download(url, zipPath)
     console.log('[postinstall] Extracting ffmpeg.exe from zip...')
 
-    // Use tar to extract (available on Windows 10+)
     try {
       execSync(`tar -xf "${zipPath}" -C "${BIN_DIR}" --strip-components=2 --include="*/bin/ffmpeg.exe"`, {
         stdio: 'pipe'
       })
     } catch {
-      // Fallback: use PowerShell with a script file
       const psScript = path.join(BIN_DIR, '_extract.ps1')
       const scriptContent = `
 Add-Type -Assembly "System.IO.Compression.FileSystem"
@@ -87,19 +70,30 @@ Remove-Item '${psScript}' -ErrorAction SilentlyContinue
       execSync(`powershell -ExecutionPolicy Bypass -File "${psScript}"`, { stdio: 'pipe' })
     }
 
-    // Clean up zip
     if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath)
 
     if (fs.existsSync(ffmpegPath)) {
       console.log('[postinstall] ffmpeg.exe extracted successfully')
     } else {
       console.log('[postinstall] WARNING: Could not extract ffmpeg.exe')
-      console.log('[postinstall] Download manually from: https://github.com/yt-dlp/FFmpeg-Builds/releases')
-      console.log('[postinstall] Place ffmpeg.exe in the bin/ directory')
     }
   } catch (err) {
     console.error('[postinstall] Failed to download ffmpeg:', err.message)
     if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath)
+  }
+}
+
+async function installPlaywright() {
+  console.log('[postinstall] Installing Playwright Chromium...')
+  try {
+    execSync('npx playwright install chromium', {
+      stdio: 'inherit',
+      cwd: path.join(__dirname, '..')
+    })
+    console.log('[postinstall] Playwright Chromium installed successfully')
+  } catch (err) {
+    console.error('[postinstall] Failed to install Playwright Chromium:', err.message)
+    console.log('[postinstall] Run manually: npx playwright install chromium')
   }
 }
 
@@ -113,17 +107,8 @@ async function main() {
     fs.mkdirSync(BIN_DIR, { recursive: true })
   }
 
-  try {
-    await downloadYtDlp()
-  } catch (err) {
-    console.error('[postinstall] Failed to download yt-dlp.exe:', err.message)
-  }
-
-  try {
-    await downloadFfmpeg()
-  } catch (err) {
-    console.error('[postinstall] Failed to download ffmpeg:', err.message)
-  }
+  await downloadFfmpeg()
+  await installPlaywright()
 }
 
 main()
