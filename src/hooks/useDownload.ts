@@ -16,6 +16,7 @@ export function useDownload(): {
   deleteHistoryItem: (id: string) => Promise<void>
   openFolder: () => Promise<void>
   openFile: (filePath: string) => Promise<void>
+  showInFolder: (filePath: string) => Promise<void>
 } {
   const [downloadState, setDownloadState] = useState<DownloadState>(initialDownloadState)
   const [history, setHistory] = useState<HistoryItem[]>([])
@@ -107,6 +108,11 @@ export function useDownload(): {
     await window.electronAPI.openFilePath(filePath)
   }, [])
 
+  const showInFolder = useCallback(async (filePath: string) => {
+    if (!window.electronAPI) return
+    await window.electronAPI.showInFolder(filePath)
+  }, [])
+
   return {
     downloadState,
     history,
@@ -114,6 +120,7 @@ export function useDownload(): {
     loadHistory,
     deleteHistoryItem,
     openFolder,
-    openFile
+    openFile,
+    showInFolder
   }
 }

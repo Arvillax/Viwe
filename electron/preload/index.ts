@@ -74,7 +74,14 @@ const api = {
    * Para .mp4, abre el reproductor de video default.
    */
   openFilePath: (filePath: string): Promise<void> =>
-    ipcRenderer.invoke('shell:openPath', filePath)
+    ipcRenderer.invoke('shell:openPath', filePath),
+
+  /**
+   * Abre el Explorer en la carpeta que contiene el archivo
+   * y resalta el archivo seleccionado.
+   */
+  showInFolder: (filePath: string): Promise<void> =>
+    ipcRenderer.invoke('shell:showInFolder', filePath)
 }
 
 // Exponer API al renderer process de forma segura

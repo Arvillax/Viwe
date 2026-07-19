@@ -12,7 +12,7 @@ export default function App(): JSX.Element {
   const [duration, setDuration] = useState(30)
   const [mode, setMode] = useState<RecordMode>('static')
   const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null)
-  const { downloadState, history, startRecording, openFolder, openFile } = useDownload()
+  const { downloadState, history, startRecording, openFolder, openFile, showInFolder } = useDownload()
 
   const handleGenerate = async (): Promise<void> => {
     if (!url.trim()) return
@@ -77,7 +77,7 @@ export default function App(): JSX.Element {
             selectedId={selectedItem?.id ?? null}
             onSelect={setSelectedItem}
             onPlay={handlePlay}
-            onOpenFolder={(filePath) => openFile(filePath)}
+            onOpenFolder={(filePath) => showInFolder(filePath)}
           />
         </div>
 

@@ -32,6 +32,7 @@ export interface ElectronAPI {
   deleteFromHistory: (id: string) => Promise<void>
   openDownloadFolder: () => Promise<void>
   openFilePath: (filePath: string) => Promise<void>
+  showInFolder: (filePath: string) => Promise<void>
 }
 
 declare global {

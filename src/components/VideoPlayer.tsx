@@ -22,7 +22,7 @@ export default function VideoPlayer({ item }: VideoPlayerProps): JSX.Element {
       {/* Video container */}
       <div className="relative bg-black aspect-video">
         <video
-          src={`file://${item.filePath}`}
+          src={`file:///${item.filePath.replace(/\\/g, '/')}`}
           controls
           className="w-full h-full object-contain"
         />

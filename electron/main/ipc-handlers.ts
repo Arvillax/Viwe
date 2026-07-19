@@ -93,4 +93,13 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle('shell:openPath', (_event, filePath: string) => {
     shell.openPath(filePath)
   })
+
+  /**
+   * Handler: shell:showInFolder
+   * Abre el Explorer de Windows en la carpeta que contiene el archivo
+   * y resalta el archivo seleccionado.
+   */
+  ipcMain.handle('shell:showInFolder', (_event, filePath: string) => {
+    shell.showItemInFolder(filePath)
+  })
 }
